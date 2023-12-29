@@ -1,5 +1,5 @@
 using FluentValidation;
-using VbApi.ValidationRules;
+using Microsoft.EntityFrameworkCore;
 
 namespace VbApi
 {
@@ -15,9 +15,11 @@ namespace VbApi
 
         public void ConfigureServices(IServiceCollection services)
         {
+
+            string connection = Configuration.GetConnectionString("MsSqlConnection");
+            services.AddDbContext<VbDbContext>(options => options.UseSqlServer(connection));
+
             services.AddControllers();
-            services.AddValidatorsFromAssemblyContaining<EmployeeValidator>();
-            services.AddValidatorsFromAssemblyContaining<StaffValidator>();
 
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
