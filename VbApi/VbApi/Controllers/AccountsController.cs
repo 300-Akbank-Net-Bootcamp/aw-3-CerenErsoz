@@ -1,86 +1,70 @@
+using AutoMapper;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using VbApi.Entity;
+using VbApi.VbBase.Response;
+using VbApi.VbBusiness.Cqrs;
+using VbApi.VbSchema;
 
-namespace VbApi.Controllers
+namespace VbApi.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AccountsController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AccountsController : ControllerBase
+    private readonly IMapper _mapper;
+    private readonly IMediator _mediator;
+
+    public AccountsController(IMapper mapper, IMediator mediator)
     {
-        private readonly VbDbContext _dbContext;
+        _mapper = mapper;
+        _mediator = mediator;
+    }
 
-        public AccountsController(VbDbContext dbContext)
-        {
-            _dbContext = dbContext;
-        }
+    [HttpGet]
+    public async Task<ApiResponse<List<AccountResponse>>> GetAllAccounts()
+    {
+        var operation = new GetAllAccountsQuery();
+        var result = await _mediator.Send(operation);
+        return result;
+    }
 
-        [HttpGet]
-        public async Task<List<Account>> Get()
-        {
-            return await _dbContext.Set<Account>()
-                .ToListAsync();
-        }
+    [HttpGet("{Id}")]
+    public async Task<ApiResponse<AccountResponse>> GetAccountById(int Id)
+    {
+        var operation = new GetAccountByIdQuery(Id);
+        var result = await _mediator.Send(operation);
+        return result;
+    }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Account>> Get(int id)
-        {
-            var account = await _dbContext.Set<Account>()
-                .Where(x => x.Id == id)
-                .FirstOrDefaultAsync();
+    [HttpGet("Parameter")]
+    public async Task<ApiResponse<List<AccountResponse>>> GetAccountsByParameter(string accountNumber, string IBAN, string CurrencyType)
+    {
+        var operation = new GetAccountsByParameterQuery(CurrencyType, IBAN, accountNumber);
+        var result = await _mediator.Send(operation);
+        return result;
+    }
 
-            if (account == null)
-            {
-                return NotFound();
-            }
+    [HttpPost]
+    public async Task<ApiResponse<AccountResponse>> CreateAccount([FromBody] AccountRequest newAccount)
+    {
+        var operation = new CreateAccountCommand(newAccount);
+        var result = await _mediator.Send(operation);
+        return result;
+    }
 
-            return account;
-        }
+    [HttpPut("{id}")]
+    public async Task<ApiResponse> UpdateAccount(int id, [FromBody] AccountRequest updatedAccount)
+    {
+        var operation = new UpdateAccountCommand(id, updatedAccount);
+        var result = await _mediator.Send(operation);
+        return result;
+    }
 
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Account account)
-        {
-            await _dbContext.Set<Account>().AddAsync(account);
-            await _dbContext.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(Get), new { id = account.Id }, account);
-        }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, [FromBody] Account account)
-        {
-            var fromDb = await _dbContext.Set<Account>().Where(x => x.Id == id).FirstOrDefaultAsync();
-
-            if (fromDb == null)
-            {
-                return NotFound();
-            }
-
-            fromDb.AccountNumber = account.AccountNumber;
-            fromDb.IBAN = account.IBAN;
-            fromDb.Balance = account.Balance;
-            fromDb.CurrencyType = account.CurrencyType;
-            fromDb.Name = account.Name;
-
-            await _dbContext.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var fromDb = await _dbContext.Set<Account>().Where(x => x.Id == id).FirstOrDefaultAsync();
-
-            if (fromDb == null)
-            {
-                return NotFound();
-            }
-
-            _dbContext.Set<Account>().Remove(fromDb);
-            await _dbContext.SaveChangesAsync();
-
-            return NoContent();
-        }
+    [HttpDelete("{id}")]
+    public async Task<ApiResponse> DeleteAccount(int id)
+    {
+        var operation = new DeleteAccountCommand(id);
+        var result = await _mediator.Send(operation);
+        return result;
     }
 }

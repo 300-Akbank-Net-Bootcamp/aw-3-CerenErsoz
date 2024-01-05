@@ -1,88 +1,70 @@
+using AutoMapper;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using VbApi.Entity;
+using VbApi.VbBase.Response;
+using VbApi.VbBusiness.Cqrs;
+using VbApi.VbSchema;
 
-namespace VbApi.Controllers
+namespace VbApi.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AddressesController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AddressesController : ControllerBase
+    private readonly VbDbContext _dbContext;
+    private readonly IMapper _mapper;
+    private readonly IMediator _mediator;
+
+    public AddressesController(VbDbContext dbContext, IMapper mapper, IMediator mediator)
     {
-        private readonly VbDbContext _dbContext;
+        _dbContext = dbContext;
+        _mapper = mapper;
+        _mediator = mediator;
+    }
 
-        public AddressesController(VbDbContext dbContext)
-        {
-            _dbContext = dbContext;
-        }
+    [HttpGet]
+    public async Task<ApiResponse<List<AddressResponse>>> GetAllAddresses()
+    {
+        var operation = new GetAllAddressesQuery();
+        var result = await _mediator.Send(operation);
+        return result;
+    }
+    [HttpGet("{Id}")]
+    public async Task<ApiResponse<AddressResponse>> GetAddressById(int Id)
+    {
+        var operation = new GetAddressById(Id);
+        var result = await _mediator.Send(operation);
+        return result;
+    }
+    [HttpGet("Parameter")]
+    public async Task<ApiResponse<List<AddressResponse>>> GetAddressesByParameter(string Address1, string Address2, string City)
+    {
+        var operation = new GetAddressByParameter(Address1, Address2, City);
+        var result = await _mediator.Send(operation);
+        return result;
+    }
 
-        [HttpGet]
-        public async Task<List<Address>> Get()
-        {
-            return await _dbContext.Set<Address>()
-                .ToListAsync();
-        }
+    [HttpPost]
+    public async Task<ApiResponse<AddressResponse>> CreateAddress([FromBody] AddressRequest newAddress)
+    {
+        var operation = new CreateAddressCommand(newAddress);
+        var result = await _mediator.Send(operation);
+        return result;
+    }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Address>> Get(int id)
-        {
-            var address = await _dbContext.Set<Address>()
-                .Where(x => x.Id == id)
-                .FirstOrDefaultAsync();
+    [HttpPut("{id}")]
+    public async Task<ApiResponse> UpdateAddress(int id, [FromBody] AddressRequest newAddress)
+    {
+        var operation = new UpdateAddressCommand(id, newAddress);
+        var result = await _mediator.Send(operation);
+        return result;
+    }
 
-            if (address == null)
-            {
-                return NotFound();
-            }
-
-            return address;
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Address address)
-        {
-            await _dbContext.Set<Address>().AddAsync(address);
-            await _dbContext.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(Get), new { id = address.Id }, address);
-        }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, [FromBody] Address address)
-        {
-            var fromDb = await _dbContext.Set<Address>().Where(x => x.Id == id).FirstOrDefaultAsync();
-
-            if (fromDb == null)
-            {
-                return NotFound();
-            }
-
-            fromDb.Address1 = address.Address1;
-            fromDb.Address2 = address.Address2;
-            fromDb.Country = address.Country;
-            fromDb.City = address.City;
-            fromDb.County = address.County;
-            fromDb.PostalCode = address.PostalCode;
-            fromDb.IsDefault = address.IsDefault;
-
-            await _dbContext.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var fromDb = await _dbContext.Set<Address>().Where(x => x.Id == id).FirstOrDefaultAsync();
-
-            if (fromDb == null)
-            {
-                return NotFound();
-            }
-
-            _dbContext.Set<Address>().Remove(fromDb);
-            await _dbContext.SaveChangesAsync();
-
-            return NoContent();
-        }
+    [HttpDelete("{id}")]
+    public async Task<ApiResponse> DeleteAddress(int id)
+    {
+        var operation = new DeleteAddressCommand(id);
+        var result = await _mediator.Send(operation);
+        return result;
     }
 }

@@ -1,6 +1,9 @@
-using FluentValidation;
+using System.Reflection;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
-
+using VbApi.VbBusiness.Cqrs;
+using VbApi.VbBusiness.Mapper;
+using VbApi.VbBusiness.Validator;
 namespace VbApi
 {
     public class Startup
@@ -19,10 +22,23 @@ namespace VbApi
             string connection = Configuration.GetConnectionString("MsSqlConnection");
             services.AddDbContext<VbDbContext>(options => options.UseSqlServer(connection));
 
-            services.AddControllers();
+            services.AddControllersWithViews()
+                .AddNewtonsoftJson(options =>
+                    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
+                );
 
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
+
+            services.AddAutoMapper(typeof(MappingProfile));
+
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateCustomerCommand).GetTypeInfo().Assembly));
+
+            services.AddControllers().AddFluentValidation(x =>
+            {
+                x.RegisterValidatorsFromAssemblyContaining<CustomerValidator>();
+                x.RegisterValidatorsFromAssemblyContaining<AddressValidator>();
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
